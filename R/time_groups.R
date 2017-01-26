@@ -1,6 +1,9 @@
-#' Different functions to group measurements with seconds resolution
-#' into high ordered time intervals
+#' Different functions to group measurements with seconds resolution into high ordered time intervals
+#' @name tgroups
+NULL
 
+#' @rdname tgroups
+#' @export
 hgroup.enum0 <- function(date, time.bin = 4){
   # привязываем все измерения, которые попали в промежуток +-1/2 интервала, к точке измерения.
   # точки измерения могут быть кратны 1, 2, 3, 4, 6, 12 часам, определяется time.bin
@@ -10,6 +13,8 @@ hgroup.enum0 <- function(date, time.bin = 4){
   floor_date(tick_time, unit = "day") + hours(n * time.bin)
 }
 
+#' @rdname tgroups
+#' @export
 hgroup.enum1 <- function(date, time.bin = 4){
   # привязываем все измерения, которые попали в промежуток [0, t] к точке измерения.
   # точки измерения могут быть кратны 1, 2, 3, 4, 6, 12 часам, определяется time.bin
@@ -19,6 +24,8 @@ hgroup.enum1 <- function(date, time.bin = 4){
   floor_date(tick_time, unit = "day") + hours(n * time.bin)
 }
 
+#' @rdname tgroups
+#' @export
 hgroup.enum <- function(date, time.bin = 4){
   # привязываем все измерения, которые попали в промежуток [0, t] к точке измерения.
   # точки измерения могут быть кратны 1, 2, 3, 4, 6, 12 часам, определяется time.bin

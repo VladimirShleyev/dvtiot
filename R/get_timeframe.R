@@ -1,6 +1,7 @@
 #' Get appropriate timeframe window from current time.
 #' Timeframe adjusted up to day unit and has forward and backward extension.
 
+#' @export
 getTimeframe <- function(days_back = 7, days_forward = 3){
   # если по каким-либо причинам наверху не определились с прогнозом (NA),
   # то полагаем что он есть и он равен базовому горизонту
