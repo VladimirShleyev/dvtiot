@@ -12,7 +12,7 @@ gatherRawWeatherData <- function() {
   history_url <- "https://raw.githubusercontent.com/iot-rus/agri-iot-data/master/weather_history.csv"
   # %>% '[['("result")
 
-  resp <- safely(read_csv)(history_url)
+  resp <- purrr::safely(read_csv)(history_url)
   if(!is.null(resp$error)){
     flog.error(resp$error)
     return(NA)
@@ -28,7 +28,7 @@ gatherRawWeatherData <- function() {
                       "&APPID=",
                       '19deaa2837b6ae0e41e4a140329a1809') # "weather?id="
 
-  resp <-  safely(GET)(reqstring)
+  resp <- purrr::safely(GET)(reqstring)
 
   if(!is.null(resp$error)){
     flog.error(resp$error)

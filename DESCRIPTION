@@ -16,5 +16,7 @@ Imports:
     lubridate,
     reshape2,
     futile.logger
+Depends:
+    purrr
 
 
