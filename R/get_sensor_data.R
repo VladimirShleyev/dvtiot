@@ -1,79 +1,92 @@
 #' Load and parse real field data from github storage
-#' Разбираемся с проблемой отображения UTF
+#' Р Р°Р·Р±РёСЂР°РµРјСЃСЏ СЃ РїСЂРѕР±Р»РµРјРѕР№ РѕС‚РѕР±СЂР°Р¶РµРЅРёСЏ UTF
 
 #' @export
-getSensorData1 <- function() {
-  # забираем данные по сенсорам в новом формате из репозитория
-  # на выходе либо данные, либо NA в случае ошибки
+getSensorData <- function() {
+  # Р·Р°Р±РёСЂР°РµРј РґР°РЅРЅС‹Рµ РїРѕ СЃРµРЅСЃРѕСЂР°Рј РІ РЅРѕРІРѕРј С„РѕСЂРјР°С‚Рµ РёР· СЂРµРїРѕР·РёС‚РѕСЂРёСЏ
+  # РЅР° РІС‹С…РѕРґРµ Р»РёР±Рѕ РґР°РЅРЅС‹Рµ, Р»РёР±Рѕ NA РІ СЃР»СѓС‡Р°Рµ РѕС€РёР±РєРё
 
-  callingFun = as.list(sys.call(-1))[[1]]
-  calledFun = deparse(sys.call()) # as.list(sys.call())[[1]]
+  data_url <- "https://github.com/iot-rus/Moscow-Lab/raw/master/result_lab.txt"
 
-  # получаем исторические данные по погоде из репозитория Гарика --------------------------------------------------------
-  # https://cran.r-project.org/web/packages/curl/vignettes/intro.html
-  resp <- try({
-    curl_fetch_memory("https://github.com/iot-rus/Moscow-Lab/raw/master/result_lab.txt")
-  })
+  # РґР°С‚Р°; РІСЂРµРјСЏ; РёРјСЏ; С€РёСЂРѕС‚Р°; РґРѕР»РіРѕС‚Р°; РјРёРЅРёРјСѓРј (0% РІР»Р°Р¶РЅРѕСЃС‚Рё); РјР°РєСЃРёРјСѓРј (100%); С‚РµРєСѓС‰РёРµ РїРѕРєР°Р·Р°РЅРёСЏ
+  cnames <- c("date", "time", "rawname", "type", "lat", "lon", "yl", "xl", "yr", "xr", "measurement", "pin")
 
-  # browser()
-  # проверим только 1-ый элемент класса, поскльку при разных ответах получается разное кол-во элементов
-  if(class(resp)[[1]] == "try-error" || resp$status_code != 200) {
-    # http://stackoverflow.com/questions/15595478/how-to-get-the-name-of-the-calling-function-inside-the-called-routine
-    flog.error(paste0("Error in ", calledFun, " called from ", callingFun, ". Class(resp) = ", class(resp)))
-    # в противном случае мы сигнализируем о невозможности обновить данные
+  resp <- purrr::safely(read_delim)(data_url,
+                                    delim=";",
+                                    quote="\"",
+                                    col_names=cnames,
+                                    col_types="Dccc????????",
+                                    # С‚Р°Р№РјР·РѕРЅСѓ, РІ РїСЂРёРЅС†РёРїРµ, РјРѕР¶РЅРѕ СѓСЃС‚Р°РЅРѕРІРёС‚СЊ Р·РґРµСЃСЊ
+                                    locale=locale("ru", encoding="windows-1251", tz="Europe/Moscow")
+                                    #progress = interactive()
+  ) # http://barryrowlingson.github.io/hadleyverse/#5)
+
+  if(!is.null(resp$error)){
+    flog.error(resp$error)
     return(NA)
   }
 
-  # ответ есть, и он корректен. В этом случае осуществляем пребразование
-  temp.df <- read_delim(rawToChar(resp$content),
-                        delim = ";",
-                        quote = "\"",
-                        # дата; время; имя; широта; долгота; минимум (0% влажности); максимум (100%); текущие показания
-                        col_names = c(
-                          "date",
-                          "time",
-                          "rawname",
-                          "type",
-                          "lat",
-                          "lon",
-                          "yl",
-                          "xl",
-                          "yr",
-                          "xr",
-                          "measurement",
-                          "pin"
-                        ),
-                        col_types = "Dccc????????",
-                        locale = locale("ru", encoding = "windows-1251", tz = "Europe/Moscow"),
-                        # таймзону, в принципе, можно установить здесь
-                        progress = interactive()
-  ) # http://barryrowlingson.github.io/hadleyverse/#5
-
-  problems(temp.df)
-
-  # расчитываем необходимые данные
-  df <- temp.df %>%
-    # линейная нормализация
-    mutate(value = yl + (yr-yl)/(xr-xl) * (measurement - xl), type = factor(type)) %>%
-    # получим временную метку
-    mutate(timestamp = ymd_hms(paste(date, time), truncated = 3, tz = "Europe/Moscow")) %>%
-    # упростим имя сенсора
-    mutate(label = gsub(".*:", "", rawname, perl = TRUE)) %>%
-    # и разделим на имя и адрес
-    separate(label, c('ipv6', 'name'), sep = '-', remove = TRUE) %>%
+  # СЂР°СЃС‡РёС‚С‹РІР°РµРј РЅРµРѕР±С…РѕРґРёРјС‹Рµ РґР°РЅРЅС‹Рµ
+  df <- resp$result %>%
+    # Р»РёРЅРµР№РЅР°СЏ РЅРѕСЂРјР°Р»РёР·Р°С†РёСЏ
+    mutate(value=yl + (yr-yl)/(xr-xl) * (measurement - xl), type=factor(type)) %>%
+    # РїРѕР»СѓС‡РёРј РІСЂРµРјРµРЅРЅСѓСЋ РјРµС‚РєСѓ
+    mutate(timestamp=lubridate::ymd_hms(paste(date, time), truncated=3, tz="Europe/Moscow")) %>%
+    # СѓРїСЂРѕСЃС‚РёРј РёРјСЏ СЃРµРЅСЃРѕСЂР°
+    mutate(label=gsub(".*:", "", rawname, perl=TRUE)) %>%
+    # Рё СЂР°Р·РґРµР»РёРј РЅР° РёРјСЏ Рё Р°РґСЂРµСЃ
+    separate(label, c('ipv6', 'name'), sep='-', remove=TRUE) %>%
     select(timestamp, name, type, value, measurement, lat, lon, pin) %>%
-    mutate(location = "Moscow Lab")
+    mutate(location="Moscow Lab")
 
 
-  # 2. постпроцессинг для разных типов датчиков
-  flog.info(paste0(calledFun, " - sensors data from GitHub recieved. Last records:"))
-  flog.info(capture.output(print(head(arrange(df, desc(timestamp)), n = 4))))
+  # РїРѕСЃС‚РїСЂРѕС†РµСЃСЃРёРЅРі РґР»СЏ РґР°С‚С‡РёРєРѕРІ РІР»Р°Р¶РЅРѕСЃС‚Рё
+  df %<>% markFieldData()
 
-  # 3. частный построцессинг
-  # постпроцессинг для датчиков влажности
+  df
+}
 
-  df %<>% postprocess_ts_field_data()
+getMoistureLevels <- function() {
+  # РѕРїСЂРµРґРµР»СЏРµРј РєР°С‚РµРіРѕСЂРёРё value, РїСЂРёРІРµРґРµРЅРЅС‹С… Рє РґРёР°РїР°Р·РѕРЅСѓ [0; 100] СЃ РґРѕРїСѓС‰РµРЅРёРµРј 3.3 РІРѕР»СЊС‚Р° РІ РјР°РєСЃРёРјСѓРјРµ
+  # РІ С‚РµСЂРјРёРЅР°С… СЌС‚РѕР№ Р¶Рµ РЅРѕСЂРјРёСЂРѕРІРєРё РЅР° РјР°РєСЃРёРјР°Р»СЊРЅРѕ РІРѕР·РјРѕР¶РЅС‹Рµ 3.3 РІРѕР»СЊС‚Р°
 
-  #    browser()
+  levels <- list(category=c(2100, 2210, 2270, 2330, 2390, 2450, 2510) * 1000,
+                 labels=c('WET++', 'WET+', 'WET', 'NORM', 'DRY', 'DRY+'))
+  # РІРѕР·РІСЂР°С‰Р°РµРј Р°СЃРёРЅС…СЂРѕРЅРЅС‹Рµ СЃРїРёСЃРєРё: РіСЂР°РЅРёС†Р°, РёРјРµРЅРѕРІР°РЅРёРµ
+  # РїРѕСЂСЏРґРѕРє РјРµРЅСЏС‚СЊ РєСЂР°Р№РЅРµ РЅРµ СЂРµРєРѕРјРµРЅРґСѓРµС‚СЃСЏ -- РїРѕСЂСЏРґРѕРє СЃР»РµРґРѕРІР°РЅРёСЏ СЏРІРЅРѕ РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ РІ РґСЂСѓРіРёС… С„СѓРЅРєС†РёСЏС…
+  levels
+}
+
+markFieldData <- function(df){
+  # РЅР° РІС…РѕРґ РїРѕР»СѓС‡Р°РµРј data.frame СЃ РІСЂРµРјРµРЅРЅС‹Рј СЂСЏРґРѕРј РёР·РјРµСЂРµРЅРёР№
+  # РїСЂРѕРІРѕРґРёРј РїРѕСЃС‚РїСЂРѕС†РµСЃСЃРёРЅРі РїРѕ РјР°СЃС€С‚Р°Р±РёСЂРѕРІР°РЅРёСЋ РёР·РјРµСЂРµРЅРёР№, РёС… РєР°С‚РµРіРѕСЂРёР·Р°С†РёРё Рё РїСЂ.
+
+  # 3. С‡Р°СЃС‚РЅС‹Р№ РїРѕСЃС‚СЂРѕС†РµСЃСЃРёРЅРі
+  # РґР°С‚С‡РёРєРё РІР»Р°Р¶РЅРѕСЃС‚Рё
+  levs <- getMoistureLevels()
+
+  # browser()
+  # РїРµСЂРµСЃС‡РёС‚С‹РІР°РµРј value РґР»СЏ РґР°С‚С‡РёРєРѕРІ РІР»Р°Р¶РЅРѕСЃС‚Рё
+  df %<>%
+    # РїРѕРєР° РґРµР»Р°РµРј РЅРѕСЂРјРёСЂРѕРІРєСѓ Рє [0, 100] РёР· РґРёР°РїР°Р·РѕРЅР° 3.3 V РіСЂСЏР·РЅС‹Рј С…Р°РєРѕРј
+    mutate(value=ifelse(type == 'MOISTURE', measurement/1000, value)) %>%
+    # Рё РІРµСЂРЅРµРј РґР»СЏ РІР»Р°Р¶РЅРѕСЃС‚Рё РІ value СЂРµРґСѓС†РёСЂРѕРІР°РЅРЅС‹Р№ РІРѕР»СЊС‚Р°Р¶
+    # РѕС‚РєР°Р»РёР±СЂСѓРµРј РІСЃРїР»РµСЃРєРё
+    # РєСЃС‚Р°С‚Рё, РЅР°РґРѕ РїРѕРґСѓРјР°С‚СЊ, РІРѕР·РјРѕР¶РЅРѕ, С‡С‚Рѕ РїРѕСЃР»Рµ РїРµСЂРµС…РѕРґР° Рє РєР°С‚РµРіРѕСЂРёР·Р°С†РёРё, РјС‹ РјРѕР¶РµРј РїСЂРѕСЃС‚Рѕ РѕС‚СЃРµРєР°С‚СЊ NA
+    mutate(work.status = (type == 'MOISTURE' &
+                            value >= head(levs$category, 1) &
+                            value <= tail(levs$category, 1)))
+
+  # РµСЃР»Рё РєРѕР»РѕРЅРєРё СЃ РєР°С‚РµРіРѕСЂРёСЏРјРё РЅРµ Р±С‹Р»Рѕ СЃРѕР·РґР°РЅРѕ, С‚Рѕ РјС‹ РµРµ РёРЅРёС†РёР°Р»РёР·РёСЂСѓРµРј
+  if(!('level' %in% names(df))) df$level <- NA
+  df %<>%
+    # СЃС‡РёС‚Р°РµРј РґР»СЏ РІСЃРµС…, РїРµСЂРµРЅРѕСЃРёРј РїРѕС‚РѕРј С‚РѕР»СЊРєРѕ РґР»СЏ С‚РµС…, РєРѕРіРѕ РЅР°РґРѕ
+    # РїСЂРµРІСЂР°С‰Р°РµРј РІ character, РёРЅР°С‡Рµ РїРѕСЃР»Рµ РїРµСЂРµРЅРѕСЃР° factor С‚РµСЂСЏРµС‚СЃСЏ, РѕСЃС‚Р°СЋС‚СЃСЏ С‚РѕР»СЊРєРѕ С†РµР»С‹Рµ С‡РёСЃР»Р°
+    mutate(marker=as.character(arules::discretize(value, method = "fixed",
+                                                  categories = levs$category,
+                                                  labels = levs$labels))) %>%
+    mutate(level=ifelse(type == 'MOISTURE', marker, level)) %>%
+    select(-marker)
+
   df
 }

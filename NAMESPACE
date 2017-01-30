@@ -3,6 +3,7 @@
 export(calcRainPerDate)
 export(extractWeather)
 export(gatherRawWeatherData)
+export(getSensorData)
 export(getTimeframe)
 export(hgroup.enum)
 export(hgroup.enum0)
