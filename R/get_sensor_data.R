@@ -1,6 +1,9 @@
 #' Load and parse real field data from github storage
 #' Разбираемся с проблемой отображения UTF
+#' @name opsensor
+NULL
 
+#' @rdname opsensor
 #' @export
 getSensorData <- function() {
   # забираем данные по сенсорам в новом формате из репозитория
@@ -46,6 +49,8 @@ getSensorData <- function() {
   df
 }
 
+#' @rdname opsensor
+#' @export
 getMoistureLevels <- function() {
   # определяем категории value, приведенных к диапазону [0; 100] с допущением 3.3 вольта в максимуме
   # в терминах этой же нормировки на максимально возможные 3.3 вольта

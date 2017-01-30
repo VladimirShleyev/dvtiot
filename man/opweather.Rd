@@ -4,6 +4,7 @@
 \alias{calcRainPerDate}
 \alias{extractWeather}
 \alias{gatherRawWeatherData}
+\alias{getCurrentWeather}
 \alias{opweather}
 \title{Load, calc, combine and filter history weather data & prediction}
 \usage{
@@ -12,6 +13,8 @@ gatherRawWeatherData()
 extractWeather(raw_weather, timeframe)
 
 calcRainPerDate(raw_weather)
+
+getCurrentWeather()
 }
 \description{
 Load, calc, combine and filter history weather data & prediction

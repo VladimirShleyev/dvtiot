@@ -157,3 +157,31 @@ calcRainPerDate <- function(raw_weather) {
 
   dfw2
 }
+
+#' @rdname opweather
+#' @export
+getCurrentWeather <- function() {
+  # получаем прогноз через API --------------------------------------------------------
+  reqstring <- paste0("api.openweathermap.org/data/2.5/",
+                      "weather?id=",
+                      '524901', # MoscowID
+                      "&APPID=",
+                      '19deaa2837b6ae0e41e4a140329a1809') # "weather?id="
+  resp <- purrr::safely(GET)(reqstring)
+
+  if(!is.null(resp$error)){
+    flog.error(resp$error)
+    return(NA)
+  }
+  flog.debug("Current weather loaded successfully")
+
+  # компонуем погодные данные
+  data <- content(resp$result)
+  list(
+    timestamp = as.POSIXct(data$dt, origin='1970-01-01'),
+    temp = round(data$main$temp - 273.15, 0), # пересчитываем из кельвинов в градусы цельсия
+    pressure = round(data$main$pressure * 0.75006375541921, 0), # пересчитываем из гектопаскалей (hPa) в мм рт. столба
+    humidity = round(data$main$humidity, 0)
+  )
+}
+
