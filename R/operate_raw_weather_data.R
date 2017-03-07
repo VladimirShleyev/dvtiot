@@ -153,7 +153,7 @@ calcRainPerDate <- function(raw_weather) {
     arrange(date)
 
   flog.info("Rain calculation finished")
-  flog.info(capture.output(print(dfw2)))
+  #flog.info(capture.output(print(dfw2)))
 
   dfw2
 }
@@ -173,7 +173,7 @@ getCurrentWeather <- function() {
     flog.error(resp$error)
     return(NA)
   }
-  flog.debug("Current weather loaded successfully")
+  # flog.debug("Current weather loaded successfully")
 
   # компонуем погодные данные
   data <- content(resp$result)
